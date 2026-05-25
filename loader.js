@@ -1,11 +1,16 @@
-// Fetch the full app HTML and replace this page with it
-fetch('app.html')
-  .then(response => response.text())
-  .then(html => {
-    document.open();
-    document.write(html);
-    document.close();
-  })
-  .catch(err => {
-    document.body.innerHTML = '<p style="color:red">Failed to load app.html – make sure it is in the same folder.</p>';
-  });
+(function() {
+  var loadingEl = document.getElementById('loading');
+  
+  fetch('app.html')
+    .then(function(response) { return response.text(); })
+    .then(function(html) {
+      var newDoc = document.open('text/html', 'replace');
+      newDoc.write(html);
+      newDoc.close();
+    })
+    .catch(function(err) {
+      if (loadingEl) {
+        loadingEl.innerHTML = '<span style="color:#ff4757">Failed to load app.html — check that it\'s in the same folder.</span>';
+      }
+    });
+})();
