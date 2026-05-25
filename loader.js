@@ -1,16 +1,26 @@
 (function() {
-  var loadingEl = document.getElementById('loading');
+  function loadApp() {
+    var loadingEl = document.getElementById('loading');
+    if (!loadingEl) {
+      setTimeout(loadApp, 50);
+      return;
+    }
+    
+    fetch('app.html')
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        var newDoc = document.open('text/html', 'replace');
+        newDoc.write(html);
+        newDoc.close();
+      })
+      .catch(function() {
+        loadingEl.textContent = '❌ Failed to load app.html';
+      });
+  }
   
-  fetch('app.html')
-    .then(function(response) { return response.text(); })
-    .then(function(html) {
-      var newDoc = document.open('text/html', 'replace');
-      newDoc.write(html);
-      newDoc.close();
-    })
-    .catch(function(err) {
-      if (loadingEl) {
-        loadingEl.innerHTML = '<span style="color:#ff4757">Failed to load app.html — check that it\'s in the same folder.</span>';
-      }
-    });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadApp);
+  } else {
+    loadApp();
+  }
 })();
