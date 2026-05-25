@@ -206,10 +206,15 @@
       background: none;
       border: none;
       color: rgba(255, 255, 255, 0.5);
-      font-size: 1.2rem;
+      font-size: 0.95rem;
       cursor: pointer;
-      padding: 0 4px;
+      padding: 0 2px;
+      min-width: 18px;
+      height: 18px;
       border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: 0.15s;
       line-height: 1;
       visibility: hidden;
@@ -519,7 +524,7 @@
       </div>
 
       <div id="iframeContainer" class="iframe-container">
-        <iframe id="contentIframe" src="about:blank" sandbox="allow-scripts allow-popups allow-forms" title="browser tab content"></iframe>
+        <iframe id="contentIframe" src="about:blank" sandbox="allow-scripts allow-popups allow-forms allow-same-origin" title="browser tab content"></iframe>
       </div>
     </div>
   </div>
