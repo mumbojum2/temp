@@ -1,21 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
   <foreignObject width="100%" height="100%">
-    <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+    <html xmlns="http://www.w3.org/1999/xhtml">
       <head>
         <script>
-          (function() {
-            const XHTML_NS = "http://www.w3.org/1999/xhtml";
-            const root = document.querySelector("foreignObject").firstElementChild;
-            
-            Object.defineProperty(document, 'head', { get: function() { return root.querySelector('head'); } });
-            Object.defineProperty(document, 'body', { get: function() { return root.querySelector('body'); } });
-            Object.defineProperty(document, 'documentElement', { get: function() { return root; } });
-          })();
+          const root = document.querySelector("foreignObject").firstElementChild;
+          Object.defineProperty(document, 'head', { get() { return root.querySelector('head'); } });
+          Object.defineProperty(document, 'body', { get() { return root.querySelector('body'); } });
+          Object.defineProperty(document, 'documentElement', { get() { return root; } });
         </script>
-        <script src="loader.js"></script>
       </head>
-      <body style="margin:0; background:#0b0c1a; display:flex; align-items:center; justify-content:center; height:100vh; color:white; font-family:sans-serif;">
-        <div id="loading">Loading Nebula…</div>
+      <body style="margin:0; overflow:hidden; height:100vh;">
+        <div id="root" style="width:100%;height:100%"></div>
+        <script src="nebula-app.js"></script>
       </body>
     </html>
   </foreignObject>

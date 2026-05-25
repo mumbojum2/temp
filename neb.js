@@ -1,0 +1,341 @@
+(function() {
+  // ──────────────────────────────────────
+  // INLINE CSS
+  // ──────────────────────────────────────
+  const styles = `
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI','Inter',system-ui,sans-serif; height:100vh; width:100vw; overflow:hidden; background:#0b0c1a; display:flex; }
+    .animated-bg { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; background:radial-gradient(circle at 30% 40%, #1e1f3a, #0b0c1a 80%); animation:bgPulse 8s ease-in-out infinite alternate; }
+    @keyframes bgPulse { 0%{ background:radial-gradient(circle at 30% 40%, #2a2b5e, #0b0c1a 80%); } 100%{ background:radial-gradient(circle at 70% 60%, #1e1f5a, #0b0c1a 85%); } }
+    #particle-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+    .splash-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#0b0c1a; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; transition:opacity 0.8s ease, visibility 0.8s; backdrop-filter:blur(12px); }
+    .splash-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+    .splash-logo { font-size:clamp(3rem, 10vw, 5.5rem); font-weight:700; letter-spacing:4px; background:linear-gradient(135deg, #a18cd1, #fbc2eb, #84fab0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:1.2rem; animation:glowText 2.4s ease-in-out infinite alternate; }
+    @keyframes glowText { 0%{ filter:drop-shadow(0 0 8px #a18cd1aa); } 100%{ filter:drop-shadow(0 0 20px #fbc2ebcc); } }
+    .splash-sub { color:rgba(255,255,255,0.75); font-size:1.2rem; letter-spacing:2px; border-top:1px solid rgba(255,255,255,0.25); padding-top:1.2rem; margin-top:0.8rem; font-weight:300; }
+    .loader-dot { margin-top:2.5rem; display:flex; gap:12px; }
+    .loader-dot span { width:10px; height:10px; background:white; border-radius:50%; animation:bounceDot 1.2s infinite ease-in-out; }
+    .loader-dot span:nth-child(2){ animation-delay:0.15s; }
+    .loader-dot span:nth-child(3){ animation-delay:0.3s; }
+    @keyframes bounceDot { 0%,80%,100%{ transform:translateY(0); opacity:0.6; } 40%{ transform:translateY(-16px); opacity:1; } }
+    .app-container { position:relative; z-index:10; display:flex; width:100%; height:100%; }
+    .tab-sidebar { width:230px; min-width:230px; background:rgba(15,17,30,0.7); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,0.12); display:flex; flex-direction:column; box-shadow:4px 0 25px rgba(0,0,0,0.5); z-index:20; transition:transform 0.35s cubic-bezier(0.23,1,0.32,1), margin-left 0.35s; transform:translateX(0); margin-left:0; }
+    .tab-sidebar.hidden { transform:translateX(-100%); margin-left:-230px; }
+    .sidebar-header { padding:1.8rem 1.2rem 1rem; font-weight:600; font-size:1.1rem; color:rgba(255,255,255,0.85); letter-spacing:1px; border-bottom:1px solid rgba(255,255,255,0.1); text-align:center; }
+    .tab-list { flex:1; overflow-y:auto; padding:0.8rem 0.5rem; display:flex; flex-direction:column; gap:0.4rem; }
+    .tab-item { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; border-radius:1.2rem; background:rgba(255,255,255,0.04); border:1px solid transparent; color:rgba(255,255,255,0.7); cursor:pointer; transition:all 0.2s ease; font-size:0.9rem; white-space:nowrap; }
+    .tab-item:hover { background:rgba(255,255,255,0.1); color:white; }
+    .tab-item.active { background:rgba(130,100,255,0.25); border-color:rgba(200,180,255,0.5); color:white; font-weight:500; }
+    .tab-title { display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; }
+    .tab-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.2rem; cursor:pointer; padding:0 4px; border-radius:50%; transition:0.15s; line-height:1; visibility:hidden; }
+    .tab-item:hover .tab-close, .tab-item.active .tab-close { visibility:visible; }
+    .tab-close:hover { color:white; background:rgba(255,255,255,0.15); }
+    .tab-item.home-tab .tab-close { display:none; }
+    .sidebar-toggle { position:fixed; top:20px; left:20px; z-index:50; background:rgba(20,20,40,0.8); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:50%; width:42px; height:42px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.3rem; transition:opacity 0.3s, transform 0.3s; opacity:0; pointer-events:none; transform:scale(0.8); }
+    .sidebar-toggle.visible { opacity:1; pointer-events:auto; transform:scale(1); }
+    .main-content { flex:1; position:relative; background:transparent; display:flex; align-items:center; justify-content:center; }
+    .home-panel { background:rgba(20,22,40,0.45); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:3rem; padding:2rem 2.5rem; box-shadow:0 30px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:2.5rem; border:1px solid rgba(255,255,255,0.1); transition:transform 0.3s ease; max-width:95vw; }
+    .home-panel:hover { transform:scale(1.01); box-shadow:0 35px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.15); }
+    .button-section { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .glass-btn { background:rgba(255,255,255,0.08); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.2); border-radius:3rem; padding:1rem 2.2rem; font-size:1.2rem; font-weight:550; color:rgba(255,255,255,0.9); letter-spacing:0.5px; cursor:pointer; transition:all 0.25s ease; box-shadow:0 10px 20px -8px rgba(0,0,0,0.4); display:flex; align-items:center; gap:0.5rem; white-space:nowrap; }
+    .glass-btn:hover { background:rgba(255,255,255,0.18); border-color:rgba(255,255,255,0.45); color:white; transform:translateY(-3px); box-shadow:0 18px 28px -8px rgba(0,0,0,0.6), 0 0 18px rgba(168,140,255,0.5); }
+    .glass-btn:active { transform:translateY(2px); box-shadow:0 6px 12px rgba(0,0,0,0.5); transition:0.05s; }
+    .headlines-section { position:relative; min-width:320px; flex:1; }
+    .headlines-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; color:rgba(255,255,255,0.8); font-size:1rem; font-weight:500; }
+    .refresh-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; font-size:1.2rem; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; backdrop-filter:blur(8px); }
+    .refresh-btn:hover { background:rgba(255,255,255,0.25); transform:rotate(90deg); }
+    .headlines-grid { display:flex; flex-direction:column; gap:0.8rem; max-height:420px; overflow-y:auto; padding-right:6px; }
+    .news-card { display:flex; background:rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.15); border-radius:1.2rem; overflow:hidden; cursor:pointer; transition:all 0.25s; box-shadow:0 8px 18px -6px rgba(0,0,0,0.4); }
+    .news-card:hover { background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.35); transform:translateY(-2px); box-shadow:0 12px 24px -8px rgba(0,0,0,0.6), 0 0 14px rgba(140,120,255,0.4); }
+    .news-card img { width:90px; height:90px; object-fit:cover; border-right:1px solid rgba(255,255,255,0.1); }
+    .card-body { padding:0.7rem 0.9rem; display:flex; flex-direction:column; justify-content:center; flex:1; }
+    .card-title { font-size:0.85rem; font-weight:600; color:white; line-height:1.3; margin-bottom:0.25rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .card-desc { font-size:0.7rem; color:rgba(255,255,255,0.65); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .news-loading { color:rgba(255,255,255,0.6); font-style:italic; }
+    .iframe-container { position:absolute; top:0; left:0; width:100%; height:100%; background:#04050a; display:none; }
+    .iframe-container.active { display:block; }
+    .iframe-container iframe { width:100%; height:100%; border:none; }
+    @media (max-width:850px) { .home-panel { flex-direction:column; align-items:center; } .headlines-section { min-width:280px; } }
+  `;
+
+  // ──────────────────────────────────────
+  // INLINE HTML
+  // ──────────────────────────────────────
+  const html = `
+    <div class="animated-bg"></div>
+    <canvas id="particle-canvas"></canvas>
+    <div id="splashScreen" class="splash-screen">
+      <div class="splash-logo">✦ NEBULA ✦</div>
+      <div class="splash-sub">SIDE·TAB·BROWSER</div>
+      <div class="loader-dot"><span></span><span></span><span></span></div>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" title="Show / hide tabs">☰</button>
+    <div class="app-container">
+      <div class="tab-sidebar" id="tabSidebar">
+        <div class="sidebar-header">📑 Tabs</div>
+        <div class="tab-list" id="tabList"></div>
+      </div>
+      <div class="main-content" id="mainContent">
+        <div id="homePanel" class="home-panel">
+          <div class="button-section">
+            <button class="glass-btn" id="btnOpenProxy"><span>🔗</span> Proxy</button>
+          </div>
+          <div class="headlines-section">
+            <div class="headlines-header">
+              <span>📰 Top Headlines</span>
+              <button class="refresh-btn" id="refreshNewsBtn" title="Refresh news">⟳</button>
+            </div>
+            <div class="headlines-grid" id="headlinesGrid">
+              <div class="news-loading">Loading headlines…</div>
+            </div>
+          </div>
+        </div>
+        <div id="iframeContainer" class="iframe-container">
+          <iframe id="contentIframe" src="about:blank" sandbox="allow-scripts allow-popups allow-forms" title="browser tab content"></iframe>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ──────────────────────────────────────
+  // MOUNT INTO ROOT
+  // ──────────────────────────────────────
+  const root = document.getElementById('root');
+  if (!root) {
+    console.error('Nebula: #root not found. Add <div id="root"></div> to your page.');
+    return;
+  }
+
+  // Inject styles
+  const styleTag = document.createElement('style');
+  styleTag.textContent = styles;
+  document.head.appendChild(styleTag);
+
+  // Inject HTML
+  root.innerHTML = html;
+
+  // ──────────────────────────────────────
+  // JAVASCRIPT (runs after DOM is ready)
+  // ──────────────────────────────────────
+  function initApp() {
+    // Splash screen
+    const splash = document.getElementById('splashScreen');
+    setTimeout(() => splash.classList.add('hidden'), 2400);
+
+    // Particle background
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, particles = [];
+
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    class Particle {
+      constructor() { this.init(); }
+      init() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.radius = Math.random() * 2.2 + 0.8;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5;
+        this.opacity = Math.random() * 0.5 + 0.2;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < -5) this.x = width + 5;
+        if (this.x > width + 5) this.x = -5;
+        if (this.y < -5) this.y = height + 5;
+        if (this.y > height + 5) this.y = -5;
+      }
+      draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(210,210,255,${this.opacity})`;
+        ctx.fill();
+      }
+    }
+
+    function initParticles(count = 90) {
+      particles = [];
+      for (let i = 0; i < count; i++) particles.push(new Particle());
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach(p => { p.update(); p.draw(ctx); });
+      requestAnimationFrame(animateParticles);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initParticles(90);
+    });
+
+    resizeCanvas();
+    initParticles(90);
+    animateParticles();
+
+    // Tab management
+    const tabListEl = document.getElementById('tabList');
+    const homePanel = document.getElementById('homePanel');
+    const iframeContainer = document.getElementById('iframeContainer');
+    const contentIframe = document.getElementById('contentIframe');
+    const tabSidebar = document.getElementById('tabSidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+
+    let tabs = [];
+    let activeTabId = null;
+    let tabCounter = 0;
+
+    function createHomeTab() {
+      return { id: 'home', title: '🏠 Home', type: 'home', url: null, closable: false };
+    }
+
+    tabs.push(createHomeTab());
+    activeTabId = 'home';
+
+    function renderTabs() {
+      tabListEl.innerHTML = '';
+      tabs.forEach(tab => {
+        const tabDiv = document.createElement('div');
+        tabDiv.className = `tab-item${tab.id === activeTabId ? ' active' : ''}${tab.id === 'home' ? ' home-tab' : ''}`;
+        tabDiv.dataset.tabId = tab.id;
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'tab-title';
+        titleSpan.textContent = tab.title;
+        tabDiv.appendChild(titleSpan);
+        if (tab.closable !== false) {
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'tab-close';
+          closeBtn.innerHTML = '&times;';
+          closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id); });
+          tabDiv.appendChild(closeBtn);
+        }
+        tabDiv.addEventListener('click', () => switchTab(tab.id));
+        tabListEl.appendChild(tabDiv);
+      });
+    }
+
+    function switchTab(tabId) {
+      if (activeTabId === tabId) return;
+      activeTabId = tabId;
+      updateContentView();
+      renderTabs();
+      updateSidebarVisibility();
+    }
+
+    function closeTab(tabId) {
+      const tab = tabs.find(t => t.id === tabId);
+      if (!tab || tab.id === 'home') return;
+      const index = tabs.findIndex(t => t.id === tabId);
+      tabs.splice(index, 1);
+      if (activeTabId === tabId) {
+        activeTabId = tabs.length > 0 ? tabs[Math.max(0, index - 1)].id : 'home';
+      }
+      updateContentView();
+      renderTabs();
+      updateSidebarVisibility();
+    }
+
+    function openNewTab(url, title) {
+      tabCounter++;
+      const newId = `tab-${Date.now()}-${tabCounter}`;
+      const newTab = { id: newId, title: title, type: 'web', url: url, closable: true };
+      tabs.push(newTab);
+      activeTabId = newId;
+      updateContentView();
+      renderTabs();
+      updateSidebarVisibility();
+    }
+
+    function updateContentView() {
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (!activeTab) { activeTabId = 'home'; updateContentView(); return; }
+      if (activeTab.type === 'home') {
+        homePanel.style.display = 'flex';
+        iframeContainer.classList.remove('active');
+      } else {
+        homePanel.style.display = 'none';
+        iframeContainer.classList.add('active');
+        if (contentIframe.src !== activeTab.url) contentIframe.src = activeTab.url;
+      }
+    }
+
+    function updateSidebarVisibility() {
+      if (activeTabId === 'home') {
+        tabSidebar.classList.remove('hidden');
+        sidebarToggle.classList.remove('visible');
+      } else {
+        sidebarToggle.classList.add('visible');
+        tabSidebar.classList.add('hidden');
+      }
+    }
+
+    sidebarToggle.addEventListener('click', () => {
+      if (activeTabId === 'home') return;
+      tabSidebar.classList.toggle('hidden');
+    });
+
+    renderTabs();
+    updateContentView();
+    updateSidebarVisibility();
+
+    // Proxy button
+    document.getElementById('btnOpenProxy').addEventListener('click', () => {
+      openNewTab('https://cdn.jsdelivr.net/gh/mumbojum2/npmprox@main/logo.svg', '🔗 Proxy');
+    });
+
+    // Static headlines
+    const staticArticles = [
+      { title:"Hunger strike continues at NJ ICE detention center as congressmembers visit", description:"Sen. Andy Kim and Rep. Rob Menendez said striking immigrant detainees remain resolute; families say they face retaliation from facility staff.", url:"https://gothamist.com/news/hunger-strike-continues-at-nj-ice-detention-center-as-congressmembers-visit", image:"https://api-prod.gothamist.com/images/357235/fill-1200x650|format-webp|webpquality-85/" },
+      { title:"Fake ICE agents terrorize immigrants amid Trump's crackdown", description:"A Noticias Telemundo investigation documented a marked increase in cases of people posing as federal agents to rob, intimidate and even injure and rape immigrants.", url:"https://www.nbcnews.com/news/us-news/ice-impersonators-immigrants-raids-violence-trump-administration-rcna265653", image:"https://media-cldnry.s-nbcnews.com/image/upload/t_nbcnews-fp-1200-630,f_auto,q_auto:best/rockcms/2026-05/260429-ICE-imposters-V2-jg-799ad7.jpg" },
+      { title:"Trump Says Iran Talks 'Proceeding Nicely' as Deal Appears Closer", description:"US President Donald Trump said negotiations with Iran over an interim deal to extend their ceasefire and reopen the Strait of Hormuz were 'proceeding nicely.'", url:"https://www.bloomberg.com/news/articles/2026-05-25/us-iran-edge-closer-to-deal-but-still-need-to-negotiate-points", image:"https://assets.bwbx.io/images/users/iqjWHBFdfxIU/i9zgZrB1Reqc/v0/1200x800.jpg" },
+      { title:"NCAA baseball tournament bracket projection before field announcement", description:"The NCAA baseball tournament bracket will be unveiled Monday. With all the postseason tournaments complete, here's our projection for the field of 64.", url:"https://www.usatoday.com/story/sports/college/baseball/2026/05/25/ncaa-baseball-tournament-bracket-projection-field-final/90248047007/", image:"https://www.usatoday.com/gcdn/authoring/authoring-images/2026/05/25/USAT/90248070007-usatsi-28786624.jpg?crop=4382,2465,x348,y94&width=3200&height=1801&format=pjpg&auto=webp" },
+      { title:"American Music Awards airing tonight with performances from Billy Idol, Keith Urban, Teyana Taylor and more", description:"The American Music Awards celebrate fan favorites in the music world and feature performances from multiple artists.", url:"https://www.cbsnews.com/news/american-music-awards-2026-performances/", image:"https://assets1.cbsnewsstatic.com/hub/i/r/2026/05/22/a80bcba4-b969-4690-9c39-149ca7800e2c/thumbnail/1200x630g2/fb42be024799cee507cf6b7fbfdbb831/untitled-design-1.png" }
+    ];
+
+    const headlinesGrid = document.getElementById('headlinesGrid');
+    const refreshNewsBtn = document.getElementById('refreshNewsBtn');
+
+    function renderNews(articles) {
+      headlinesGrid.innerHTML = '';
+      articles.forEach(article => {
+        const card = document.createElement('div');
+        card.className = 'news-card';
+        card.addEventListener('click', () => { if (article.url) window.open(article.url, '_blank'); });
+        const img = document.createElement('img');
+        img.src = article.image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="90" height="90"%3E%3Crect width="90" height="90" fill="%2322253f"/%3E%3C/svg%3E';
+        img.alt = article.title;
+        img.onerror = () => { img.src = 'data:image/svg+xml,...'; };
+        card.appendChild(img);
+        const body = document.createElement('div');
+        body.className = 'card-body';
+        const title = document.createElement('div');
+        title.className = 'card-title';
+        title.textContent = article.title || 'Untitled';
+        body.appendChild(title);
+        const desc = document.createElement('div');
+        desc.className = 'card-desc';
+        desc.textContent = article.description || '';
+        body.appendChild(desc);
+        card.appendChild(body);
+        headlinesGrid.appendChild(card);
+      });
+    }
+
+    renderNews(staticArticles);
+    refreshNewsBtn.addEventListener('click', () => renderNews(staticArticles));
+  }
+
+  // Run init
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
+})();
